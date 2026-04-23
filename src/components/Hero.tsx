@@ -1,6 +1,4 @@
-import { useState, useEffect, Suspense, lazy, useRef } from 'react';
-
-const Spline = lazy(() => import('@splinetool/react-spline'));
+import { useState, useEffect, useRef } from 'react';
 
 const TYPEWRITER_WORDS = [
   'I build scalable React apps that ship fast and look great.',
@@ -45,32 +43,6 @@ function Typewriter({ words }: { words: string[] }) {
   );
 }
 
-function SplineSkeleton() {
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'radial-gradient(ellipse at 90% 50%, #1C1810 0%, #111009 50%, transparent 100%)',
-      }}
-    >
-      <div
-        style={{
-          width: '48px',
-          height: '48px',
-          border: '2px solid var(--color-border)',
-          borderTopColor: 'var(--color-primary)',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }}
-      />
-    </div>
-  );
-}
-
 function MobileHeroGraphic() {
   return (
     <div
@@ -96,15 +68,147 @@ function MobileHeroGraphic() {
   );
 }
 
+// ─── Gold Particle Field ───────────────────────────────────────────────────────
+// Pure canvas — zero libraries, zero GPU overhead, loads in <50ms.
+// Attach mousemove to the hero section so particles react across the full width,
+// including the left half where the name text lives.
+function ParticleField({ heroRef }: { heroRef: React.RefObject<HTMLElement | null> }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let mx = -2000;
+    let my = -2000;
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resize();
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    const N = 80;
+    const GOLD = '#C4A35A';
+    const BG = '#0D0C08';
+    const CONNECT_DIST = 120;
+    const REPEL_DIST = 110;
+    const REPEL_FORCE = 0.45;
+
+    const pts = Array.from({ length: N }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      r: Math.random() * 1.8 + 0.8,
+    }));
+
+    // Listen on the hero section so mouse events from the left text half work too
+    const target = heroRef.current ?? canvas;
+
+    const onMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mx = e.clientX - rect.left;
+      my = e.clientY - rect.top;
+    };
+    const onLeave = () => {
+      mx = -2000;
+      my = -2000;
+    };
+
+    target.addEventListener('mousemove', onMove);
+    target.addEventListener('mouseleave', onLeave);
+
+    const draw = () => {
+      ctx.fillStyle = BG;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < N; i++) {
+        const p = pts[i];
+
+        // Mouse repulsion
+        const dx = p.x - mx;
+        const dy = p.y - my;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < REPEL_DIST && d > 0) {
+          p.vx += (dx / d) * REPEL_FORCE;
+          p.vy += (dy / d) * REPEL_FORCE;
+        }
+
+        // Dampen velocity
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+
+        // Move
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Wrap edges
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        // Draw dot
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = GOLD;
+        ctx.fill();
+
+        // Draw connection lines to nearby particles
+        for (let j = i + 1; j < N; j++) {
+          const q = pts[j];
+          const dx2 = p.x - q.x;
+          const dy2 = p.y - q.y;
+          const dist = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+          if (dist < CONNECT_DIST) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(196,163,90,${(1 - dist / CONNECT_DIST) * 0.18})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      animId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      ro.disconnect();
+      target.removeEventListener('mousemove', onMove);
+      target.removeEventListener('mouseleave', onLeave);
+    };
+  }, [heroRef]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'block',
+        pointerEvents: 'none', // hero section handles the events
+      }}
+    />
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function Hero() {
   const [isMobile, setIsMobile] = useState(false);
-  const [splineLoaded, setSplineLoaded] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
-  const splineAppRef = useRef<{
-    emitEvent: (event: string, objectName: string) => void;
-    setVariable: (name: string, value: number) => void;
-  } | null>(null);
-  const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -112,35 +216,6 @@ export default function Hero() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  const handleSplineLoad = (app: any) => {
-    splineAppRef.current = app;
-    setSplineLoaded(true);
-  };
-
-  useEffect(() => {
-    const hero = heroRef.current;
-    if (!hero || isMobile) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!splineAppRef.current) return;
-      const rect = hero.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
-
-      if (animFrameRef.current) return;
-      animFrameRef.current = requestAnimationFrame(() => {
-        animFrameRef.current = null;
-        if (splineAppRef.current) {
-          splineAppRef.current.setVariable('cursorX', x);
-          splineAppRef.current.setVariable('cursorY', y);
-        }
-      });
-    };
-
-    hero.addEventListener('mousemove', handleMouseMove);
-    return () => hero.removeEventListener('mousemove', handleMouseMove);
-  }, [isMobile]);
 
   const scrollToProjects = () => {
     document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' });
@@ -175,6 +250,23 @@ export default function Hero() {
       {/* Mobile graphic */}
       {isMobile && <MobileHeroGraphic />}
 
+      {/* Gold particle field — desktop only, sits in right half behind text */}
+      {!isMobile && (
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            width: '55%',
+            height: '100%',
+            zIndex: 1,
+            pointerEvents: 'none',
+          }}
+        >
+          <ParticleField heroRef={heroRef} />
+        </div>
+      )}
+
       {/* Scroll indicator */}
       <div
         style={{
@@ -185,6 +277,7 @@ export default function Hero() {
           flexDirection: 'column',
           alignItems: 'center',
           gap: 'var(--space-2)',
+          zIndex: 4,
         }}
       >
         <span
@@ -282,7 +375,14 @@ export default function Hero() {
             <Typewriter words={TYPEWRITER_WORDS} />
           </p>
 
-          <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--space-4)',
+              flexWrap: 'wrap',
+              pointerEvents: 'auto',
+            }}
+          >
             <button
               onClick={scrollToProjects}
               style={{
@@ -351,7 +451,13 @@ export default function Hero() {
           </div>
 
           {/* Social Links */}
-          <div style={{ display: 'flex', gap: 'var(--space-6)' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--space-6)',
+              pointerEvents: 'auto',
+            }}
+          >
             {[
               {
                 label: 'GitHub',
@@ -407,39 +513,6 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Spline 3D Scene — Desktop Only */}
-      {!isMobile && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            width: '55%',
-            height: '100%',
-            zIndex: 1,
-            background: 'transparent',
-            pointerEvents: 'auto',
-            willChange: 'transform',
-          }}
-        >
-          {!splineLoaded && <SplineSkeleton />}
-          <Suspense fallback={null}>
-            <Spline
-              scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-              onLoad={handleSplineLoad}
-              style={{
-                width: '100%',
-                height: '100%',
-                opacity: splineLoaded ? 1 : 0,
-                transition: 'opacity 0.5s ease',
-                willChange: 'transform',
-                pointerEvents: 'auto',
-              }}
-            />
-          </Suspense>
-        </div>
-      )}
-
       {/* Bottom fade to bg */}
       <div
         style={{
@@ -458,9 +531,6 @@ export default function Hero() {
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
         }
         @keyframes scrollPulse {
           0%, 100% { opacity: 0.3; }
