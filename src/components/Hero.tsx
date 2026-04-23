@@ -68,11 +68,7 @@ function MobileHeroGraphic() {
   );
 }
 
-// ─── Gold Particle Field ───────────────────────────────────────────────────────
-// Pure canvas — zero libraries, zero GPU overhead, loads in <50ms.
-// Attach mousemove to the hero section so particles react across the full width,
-// including the left half where the name text lives.
-function ParticleField({ heroRef }: { heroRef: React.RefObject<HTMLElement | null> }) {
+function ParticleField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -82,96 +78,82 @@ function ParticleField({ heroRef }: { heroRef: React.RefObject<HTMLElement | nul
     if (!ctx) return;
 
     let animId: number;
-    let mx = -2000;
-    let my = -2000;
+    let mx = -9999;
+    let my = -9999;
 
-    const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+    // Use window dimensions — reliable before layout paint
+    const setSize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     };
-    resize();
+    setSize();
+    window.addEventListener('resize', setSize);
 
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
+    const N = 90;
 
-    const N = 80;
-    const GOLD = '#C4A35A';
-    const BG = '#0D0C08';
-    const CONNECT_DIST = 120;
-    const REPEL_DIST = 110;
-    const REPEL_FORCE = 0.45;
+    type Particle = { x: number; y: number; vx: number; vy: number; r: number };
+    const pts: Particle[] = [];
+    for (let i = 0; i < N; i++) {
+      pts.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: (Math.random() - 0.5) * 0.6,
+        r: Math.random() * 1.8 + 0.7,
+      });
+    }
 
-    const pts = Array.from({ length: N }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      r: Math.random() * 1.8 + 0.8,
-    }));
+    // Listen on window so cursor works across the whole page
+    const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
+    const onLeave = () => { mx = -9999; my = -9999; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseleave', onLeave);
 
-    // Listen on the hero section so mouse events from the left text half work too
-    const target = heroRef.current ?? canvas;
-
-    const onMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mx = e.clientX - rect.left;
-      my = e.clientY - rect.top;
-    };
-    const onLeave = () => {
-      mx = -2000;
-      my = -2000;
-    };
-
-    target.addEventListener('mousemove', onMove);
-    target.addEventListener('mouseleave', onLeave);
+    const CONNECT = 130;
+    const REPEL = 120;
 
     const draw = () => {
-      ctx.fillStyle = BG;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // clearRect keeps canvas transparent — hero CSS gradient shows through
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       for (let i = 0; i < N; i++) {
         const p = pts[i];
 
-        // Mouse repulsion
         const dx = p.x - mx;
         const dy = p.y - my;
         const d = Math.sqrt(dx * dx + dy * dy);
-        if (d < REPEL_DIST && d > 0) {
-          p.vx += (dx / d) * REPEL_FORCE;
-          p.vy += (dy / d) * REPEL_FORCE;
+        if (d < REPEL && d > 0) {
+          p.vx += (dx / d) * 0.5;
+          p.vy += (dy / d) * 0.5;
         }
 
-        // Dampen velocity
         p.vx *= 0.97;
         p.vy *= 0.97;
-
-        // Move
         p.x += p.vx;
         p.y += p.vy;
 
-        // Wrap edges
         if (p.x < 0) p.x = canvas.width;
         if (p.x > canvas.width) p.x = 0;
         if (p.y < 0) p.y = canvas.height;
         if (p.y > canvas.height) p.y = 0;
 
-        // Draw dot
+        // Gold dot
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = GOLD;
+        ctx.fillStyle = '#C4A35A';
         ctx.fill();
 
-        // Draw connection lines to nearby particles
+        // Connection lines
         for (let j = i + 1; j < N; j++) {
           const q = pts[j];
           const dx2 = p.x - q.x;
           const dy2 = p.y - q.y;
           const dist = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-          if (dist < CONNECT_DIST) {
+          if (dist < CONNECT) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(196,163,90,${(1 - dist / CONNECT_DIST) * 0.18})`;
+            ctx.strokeStyle = `rgba(196,163,90,${(1 - dist / CONNECT) * 0.22})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -185,30 +167,30 @@ function ParticleField({ heroRef }: { heroRef: React.RefObject<HTMLElement | nul
 
     return () => {
       cancelAnimationFrame(animId);
-      ro.disconnect();
-      target.removeEventListener('mousemove', onMove);
-      target.removeEventListener('mouseleave', onLeave);
+      window.removeEventListener('resize', setSize);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseleave', onLeave);
     };
-  }, [heroRef]);
+  }, []);
 
   return (
     <canvas
       ref={canvasRef}
       style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
         width: '100%',
         height: '100%',
-        display: 'block',
-        pointerEvents: 'none', // hero section handles the events
+        pointerEvents: 'none',
+        zIndex: 1,
       }}
     />
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-
 export default function Hero() {
   const [isMobile, setIsMobile] = useState(false);
-  const heroRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -224,7 +206,6 @@ export default function Hero() {
   return (
     <section
       id="hero"
-      ref={heroRef}
       style={{
         minHeight: '100vh',
         display: 'flex',
@@ -236,7 +217,7 @@ export default function Hero() {
         background: 'radial-gradient(ellipse at 70% 50%, #1C1810 0%, #111009 60%, #0D0C08 100%)',
       }}
     >
-      {/* Secondary warm glow accent */}
+      {/* Warm glow accent */}
       <div
         style={{
           position: 'absolute',
@@ -247,25 +228,8 @@ export default function Hero() {
         }}
       />
 
-      {/* Mobile graphic */}
-      {isMobile && <MobileHeroGraphic />}
-
-      {/* Gold particle field — desktop only, sits in right half behind text */}
-      {!isMobile && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            width: '55%',
-            height: '100%',
-            zIndex: 1,
-            pointerEvents: 'none',
-          }}
-        >
-          <ParticleField heroRef={heroRef} />
-        </div>
-      )}
+      {/* Gold particles desktop / SVG graphic mobile */}
+      {!isMobile ? <ParticleField /> : <MobileHeroGraphic />}
 
       {/* Scroll indicator */}
       <div
@@ -278,6 +242,7 @@ export default function Hero() {
           alignItems: 'center',
           gap: 'var(--space-2)',
           zIndex: 4,
+          pointerEvents: 'none',
         }}
       >
         <span
@@ -311,10 +276,9 @@ export default function Hero() {
           alignItems: 'flex-end',
           position: 'relative',
           zIndex: 2,
-          pointerEvents: 'none',
         }}
       >
-        {/* Left: Name & Title */}
+        {/* Left: Name */}
         <div>
           <div
             style={{
@@ -352,7 +316,7 @@ export default function Hero() {
           </h1>
         </div>
 
-        {/* Right: Description & CTAs */}
+        {/* Right: Tagline, CTAs, Socials */}
         <div
           style={{
             display: 'flex',
@@ -375,14 +339,7 @@ export default function Hero() {
             <Typewriter words={TYPEWRITER_WORDS} />
           </p>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-4)',
-              flexWrap: 'wrap',
-              pointerEvents: 'auto',
-            }}
-          >
+          <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
             <button
               onClick={scrollToProjects}
               style={{
@@ -451,13 +408,7 @@ export default function Hero() {
           </div>
 
           {/* Social Links */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-6)',
-              pointerEvents: 'auto',
-            }}
-          >
+          <div style={{ display: 'flex', gap: 'var(--space-6)' }}>
             {[
               {
                 label: 'GitHub',
@@ -513,7 +464,7 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Bottom fade to bg */}
+      {/* Bottom fade */}
       <div
         style={{
           position: 'absolute',
