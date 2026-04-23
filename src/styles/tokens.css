@@ -1,0 +1,106 @@
+/* ============================================
+   CSS DESIGN TOKENS — Abhinay Portfolio
+   ============================================ */
+
+:root {
+  /* --- Color Palette (Dark Theme) --- */
+  --color-bg: #0D0C08;
+  --color-bg2: #111009;
+  --color-bg3: #1C1810;
+  --color-surface: #141413;
+
+  --color-primary: #c8a96e;
+  --color-primary-dim: #6b5a38;
+  --color-primary-glow: rgba(200, 169, 110, 0.15);
+
+  --color-accent: #c8a96e;
+  --color-text: #f0ead8;
+  --color-text-muted: #9a9488;
+  --color-text-dim: #6b6359;
+
+  --color-border: rgba(200, 169, 110, 0.15);
+  --color-border-soft: rgba(240, 234, 216, 0.07);
+
+  /* --- Typography --- */
+  --font-heading: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  --text-xs: 0.625rem;   /* 10px */
+  --text-sm: 0.6875rem;  /* 11px */
+  --text-base: 0.875rem; /* 14px */
+  --text-md: 0.9375rem;  /* 15px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.375rem;   /* 22px */
+  --text-2xl: 1.75rem;   /* 28px */
+  --text-3xl: 2.5rem;    /* 40px */
+  --text-4xl: 3rem;      /* 48px */
+  --text-5xl: 4.5rem;    /* 72px */
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  /* --- Spacing (4px base) --- */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+  --space-24: 6rem;     /* 96px */
+  --space-section: 7.5rem; /* 120px */
+
+  /* --- Border Radius --- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  /* --- Transitions --- */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* --- Z-Index Scale --- */
+  --z-base: 1;
+  --z-above: 10;
+  --z-nav: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+  --z-cursor: 9999;
+}
+
+/* --- Light Theme --- */
+[data-theme='light'] {
+  --color-bg: #f5f2ec;
+  --color-bg2: #eceae3;
+  --color-bg3: #e2dfd7;
+  --color-surface: #ffffff;
+
+  --color-primary: #8b6914;
+  --color-primary-dim: #a8893f;
+  --color-primary-glow: rgba(139, 105, 20, 0.1);
+
+  --color-text: #1a1815;
+  --color-text-muted: #6b6359;
+  --color-text-dim: #9a9488;
+
+  --color-border: rgba(26, 24, 21, 0.12);
+  --color-border-soft: rgba(26, 24, 21, 0.06);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.15);
+}

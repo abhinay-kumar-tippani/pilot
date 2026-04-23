@@ -1,7 +1,7 @@
 # Dependencies
 node_modules
 
-# Build output
+# Build
 dist
 build
 *.local
@@ -23,6 +23,3 @@ npm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
-
-# Vite
-vite.config.ts.timestamp-*
